@@ -1,0 +1,81 @@
+name: CI-CD-Pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-test-scan-push:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build with Maven
+        run: mvn clean package
+
+      - name: Run Unit Tests
+        run: mvn test
+
+      - name: SonarQube Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          mvn sonar:sonar \
+          -Dsonar.projectKey=register-app \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.login=$SONAR_TOKEN
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }} .
+
+      - name: Scan Docker Image using Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}
+
+      - name: Clone Manifest Repository
+        run: |
+          git clone https://${{ secrets.GH_TOKEN }}@github.com/YOUR_USERNAME/k8s-manifest-repo.git
+
+      - name: Update Deployment Manifest
+        run: |
+          cd k8s-manifest-repo
+          sed -i "s#image:.*#image: ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}#g" deployment.yaml
+
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
+
+          git add .
+          git commit -m "Updated image tag to ${{ github.run_number }}"
+          git push
+
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
