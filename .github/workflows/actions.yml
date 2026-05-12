@@ -59,20 +59,27 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}
 
+          
+    # Clone GitOps Manifest Repo
       - name: Clone Manifest Repository
         run: |
-          git clone https://${{ secrets.GH_TOKEN }}@github.com/YOUR_USERNAME/k8s-manifest-repo.git
+          git clone https://${{ secrets.GH_TOKEN }}@github.com/Sandeepnirwani/register-app-manifests.git
 
-      - name: Update Deployment Manifest
+
+      # Update Kubernetes Deployment YAML
+      - name: Update Kubernetes Manifest
         run: |
-          cd k8s-manifest-repo
+          cd register-app-manifests
+
           sed -i "s#image:.*#image: ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}#g" deployment.yaml
 
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions"
 
           git add .
-          git commit -m "Updated image tag to ${{ github.run_number }}"
+          git commit -m "Updated image to version ${{ github.run_number }}"
+
+          git push
           git push
 
       - name: Slack Notification
