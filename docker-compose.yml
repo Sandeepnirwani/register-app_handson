@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+
+  register-app:
+    build: .
+    container_name: register_app
+    ports:
+      - "8081:8080"
+
+    depends_on:
+      - mysql
+
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: registerdb
+      DB_USER: root
+      DB_PASSWORD: root
+
+  mysql:
+    image: mysql:8
+    container_name: mysql_db
+
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: registerdb
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

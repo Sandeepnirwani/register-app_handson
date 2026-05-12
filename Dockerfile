@@ -1,4 +1,20 @@
-FROM tomcat:latest
-RUN cp -R  /usr/local/tomcat/webapps.dist/*  /usr/local/tomcat/webapps
-COPY /webapp/target/*.war /usr/local/tomcat/webapps
+# ---------- Build Stage ----------
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 
+WORKDIR /build
+
+COPY . .
+
+RUN mvn clean package -DskipTests
+
+
+# ---------- Runtime Stage ----------
+FROM tomcat:9.0-jdk17
+
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+COPY --from=builder /build/webapp/target/*.war /usr/local/tomcat/webapps/ROOT.war
+
+EXPOSE 8080
+
+CMD ["catalina.sh", "run"]
