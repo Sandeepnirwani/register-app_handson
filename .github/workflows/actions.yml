@@ -59,7 +59,7 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}
 
-          
+
     # Clone GitOps Manifest Repo
       - name: Clone Manifest Repository
         run: |
@@ -71,7 +71,7 @@ jobs:
         run: |
           cd register-app-manifests
 
-          sed -i "s#image:.*#image: ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}#g" deployment.yaml
+          sed -i "s#image:.*#image: ${{ secrets.DOCKER_USERNAME }}/register-app:${{ github.run_number }}#g" deployment.yml
 
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions"
@@ -81,9 +81,3 @@ jobs:
 
           git push
           git push
-
-      - name: Slack Notification
-        uses: 8398a7/action-slack@v3
-        with:
-          status: success
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
